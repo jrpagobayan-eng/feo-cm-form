@@ -79,7 +79,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--surface);mi
 .tgl{padding:5px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text-muted);transition:all 0.13s;font-family:inherit;}
 .tgl.yes.on{background:var(--green);color:#fff;box-shadow:0 2px 6px rgba(26,122,58,0.3);}
 .tgl.no.on{background:var(--red);color:#fff;box-shadow:0 2px 6px rgba(163,45,45,0.3);}
+.tgl.osi.on{background:var(--teal);color:#fff;box-shadow:0 2px 6px rgba(0,112,192,0.3);}
+.tgl.nonosi.on{background:var(--navy);color:#fff;box-shadow:0 2px 6px rgba(0,32,96,0.3);}
 .tgl:hover:not(.on){background:rgba(0,0,0,0.07);}
+.matbadge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;flex-shrink:0;letter-spacing:0.01em;white-space:nowrap;}
+.matbadge.osi{background:var(--teal-light);color:var(--teal);}
+.matbadge.nonosi{background:var(--navy-light);color:var(--navy);}
 
 /* STATUS BUTTONS */
 .sgrp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
@@ -186,7 +191,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--surface);mi
     <div class="hdr-top">
       <div class="hdr-logo"><i class="ti ti-tool" aria-hidden="true"></i></div>
       <div style="flex:1">
-        <div class="hdr-title">Corrective Maintenance</div>
+        <div class="hdr-title">Preventive and Corrective Maintenance Log</div>
         <div class="hdr-sub">Field Engineering Operations · FEO</div>
       </div>
       <div class="hdr-badge" id="ecnt"><i class="ti ti-database" style="font-size:11px"></i> 0 entries</div>
@@ -368,6 +373,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--surface);mi
           <input type="text" id="m-qty" placeholder="e.g. 1PC"/>
         </div>
       </div>
+      <div class="field">
+        <div class="flbl"><i class="ti ti-tag"></i>Material Type<span class="req">*</span></div>
+        <div class="toggle-wrap" style="align-self:flex-start;">
+          <button class="tgl osi" id="mt-osi" type="button" onclick="pickMatType('OSI-Material')">OSI-Material</button>
+          <button class="tgl nonosi" id="mt-nonosi" type="button" onclick="pickMatType('Non-OSI Material')">Non-OSI Material</button>
+        </div>
+      </div>
       <button class="bghost" style="align-self:flex-start;" onclick="addMaterial()" type="button"><i class="ti ti-plus"></i>Add material</button>
       <div class="flist" id="mlist"></div>
     </div>
@@ -462,6 +474,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:var(--surface);mi
 var WEB_APP='https://script.google.com/macros/s/AKfycbx1lpOoi3yHY7LnZ6qzthi8LLoaP1VYUrn43EFtimFg2hz24FOjfKmNOzA_XDkz91yj/exec';
 var ins=[],maj=[],wst='',gcVal='',afiles=[],cnt=0,uploadedNames=[],uploadedUrls=[];
 var materials=[];
+var matType='';
+var gridFolderUrl='';
 var cats={before:{files:[],names:[],urls:[]},after:{files:[],names:[],urls:[]}};
 
 function goTab(t){
@@ -484,12 +498,21 @@ function pickGC(val){
   document.getElementById('gc-yes').classList.toggle('on',val==='Yes');
   document.getElementById('gc-no').classList.toggle('on',val==='No');
 }
+function pickMatType(val){
+  matType=val;
+  document.getElementById('mt-osi').classList.toggle('on',val==='OSI-Material');
+  document.getElementById('mt-nonosi').classList.toggle('on',val==='Non-OSI Material');
+}
 function addMaterial(){
   var name=gv('m-name'),qty=gv('m-qty');
   if(!name){showAlert('err','ti-alert-circle','Enter a material name.');return;}
-  materials.push({name:name,qty:qty||'—'});
+  if(!matType){showAlert('err','ti-alert-circle','Select OSI-Material or Non-OSI Material.');return;}
+  materials.push({name:name,qty:qty||'—',type:matType});
   document.getElementById('m-name').value='';
   document.getElementById('m-qty').value='';
+  matType='';
+  document.getElementById('mt-osi').classList.remove('on');
+  document.getElementById('mt-nonosi').classList.remove('on');
   document.getElementById('m-name').focus();
   renderMaterials();
 }
@@ -500,6 +523,7 @@ function renderMaterials(){
     var d=document.createElement('div');d.className='fitem';
     d.innerHTML='<i class="ti ti-package fic"></i>'
       +'<span class="fnm">'+m.name+'</span>'
+      +'<span class="matbadge '+(m.type==='OSI-Material'?'osi':'nonosi')+'">'+m.type+'</span>'
       +'<span class="fsz">'+m.qty+'</span>'
       +'<i class="ti ti-x frm" onclick="rmMaterial('+i+')" aria-label="Remove"></i>';
     ul.appendChild(d);
@@ -698,12 +722,14 @@ function showAlert(type,ico,msg){
 function clearAll(){
   ['f-date','f-grid','f-terr','f-tech','f-audit','f-redline','f-cmdate','f-remarks','f-gridmonth','f-coordinator','f-teamleader','f-dispatch','f-nearestsite','f-location','f-lat','f-lng','m-name','m-qty'].forEach(function(id){document.getElementById(id).value='';});
   ins=[];maj=[];wst='';gcVal='';afiles=[];uploadedNames=[];uploadedUrls=[];
-  materials=[];
+  materials=[];matType='';gridFolderUrl='';
   cats={before:{files:[],names:[],urls:[]},after:{files:[],names:[],urls:[]}};
   document.querySelectorAll('.pill').forEach(function(p){p.classList.remove('on');});
   document.querySelectorAll('.sbtn').forEach(function(s){s.classList.remove('on');});
   document.getElementById('gc-yes').classList.remove('on');
   document.getElementById('gc-no').classList.remove('on');
+  document.getElementById('mt-osi').classList.remove('on');
+  document.getElementById('mt-nonosi').classList.remove('on');
   document.getElementById('flist').innerHTML='';
   document.getElementById('mlist').innerHTML='';
   document.getElementById('flist-before').innerHTML='';
@@ -742,12 +768,13 @@ async function doSubmit(){
         var resp=await fetch(WEB_APP,{
           method:'POST',
           headers:{'Content-Type':'text/plain'},
-          body:JSON.stringify({action:'uploadFile',fileName:afiles[i].name,mimeType:afiles[i].type||'application/octet-stream',fileData:b64})
+          body:JSON.stringify({action:'uploadFile',fileName:afiles[i].name,mimeType:afiles[i].type||'application/octet-stream',fileData:b64,grid:grid})
         });
         var result=await resp.json();
         if(!result.success) throw new Error(result.error||'Upload failed');
         uploadedNames.push(afiles[i].name);
         uploadedUrls.push(result.fileUrl||'');
+        if(result.folderUrl) gridFolderUrl=result.folderUrl;
         var doneHtml='<i class="ti ti-check"></i> Uploaded'
           +(result.fileUrl?'</span><a class="flink" href="'+result.fileUrl+'" target="_blank" title="Open in Drive"><i class="ti ti-external-link"></i></a':'');
         setFitemStatus(i,'done',doneHtml);
@@ -773,12 +800,13 @@ async function doSubmit(){
         var bresp=await fetch(WEB_APP,{
           method:'POST',
           headers:{'Content-Type':'text/plain'},
-          body:JSON.stringify({action:'uploadFile',fileName:bucket.files[bi].name,mimeType:bucket.files[bi].type||'application/octet-stream',fileData:bb64,category:cat})
+          body:JSON.stringify({action:'uploadFile',fileName:bucket.files[bi].name,mimeType:bucket.files[bi].type||'application/octet-stream',fileData:bb64,category:cat,grid:grid})
         });
         var bresult=await bresp.json();
         if(!bresult.success) throw new Error(bresult.error||'Upload failed');
         bucket.names.push(bucket.files[bi].name);
         bucket.urls.push(bresult.fileUrl||'');
+        if(bresult.folderUrl) gridFolderUrl=bresult.folderUrl;
         var bdoneHtml='<i class="ti ti-check"></i> Uploaded'
           +(bresult.fileUrl?'</span><a class="flink" href="'+bresult.fileUrl+'" target="_blank" title="Open in Drive"><i class="ti ti-external-link"></i></a':'');
         setFitemStatusCat(cat,bi,'done',bdoneHtml);
@@ -809,14 +837,15 @@ async function doSubmit(){
     status:wst||'—',
     inscope:ins.length?ins.join(' | '):'—',
     major:maj.length?maj.join(' | '):'—',
-    materials:materials.length?materials.map(function(m){return m.name+' - '+m.qty;}).join(' | '):'—',
+    materials:materials.length?materials.map(function(m){return '['+m.type+'] '+m.name+' - '+m.qty;}).join(' | '):'—',
     remarks:gv('f-remarks')||'—',
     beforePhotos:cats.before.names.length?cats.before.names.join(', '):'—',
     beforePhotoLinks:cats.before.urls.length?cats.before.urls.join(', '):'—',
     afterPhotos:cats.after.names.length?cats.after.names.join(', '):'—',
     afterPhotoLinks:cats.after.urls.length?cats.after.urls.join(', '):'—',
     attachments:uploadedNames.length?uploadedNames.join(', '):'—',
-    attachmentLinks:uploadedUrls.length?uploadedUrls.join(', '):'—'
+    attachmentLinks:uploadedUrls.length?uploadedUrls.join(', '):'—',
+    photoFolderLink:gridFolderUrl||'—'
   };
   console.log('PAYLOAD attachmentLinks:',payload.attachmentLinks);
 
@@ -826,10 +855,11 @@ async function doSubmit(){
     if(!sresult.success) throw new Error(sresult.error||'Sheet write failed');
     clearSubStatus();setLoading(false);
     var failedCount=afiles.length-uploadedNames.length;
+    var folderLinkHtml=gridFolderUrl?' <a href="'+gridFolderUrl+'" target="_blank" style="color:inherit;text-decoration:underline;font-weight:700;">Open '+escHtml(grid)+' folder</a>':'';
     if(failedCount>0){
-      showAlert('warn','ti-alert-triangle','Entry saved — but '+failedCount+' file(s) failed to upload.');
+      showAlert('warn','ti-alert-triangle','Entry saved — but '+failedCount+' file(s) failed to upload.'+folderLinkHtml);
     } else {
-      showAlert('ok','ti-circle-check','CM entry saved!'+(uploadedNames.length?' '+uploadedNames.length+' file(s) uploaded to Drive.':''));
+      showAlert('ok','ti-circle-check','CM entry saved!'+(uploadedNames.length?' '+uploadedNames.length+' file(s) uploaded to Drive.':'')+folderLinkHtml);
     }
     addToLog({grid:grid,terr:terr,tech:tech,date:date,status:wst,gridmonth:gridmonth});
     clearAll();
